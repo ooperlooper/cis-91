@@ -1,0 +1,68 @@
+---
+- hosts: all
+  name: Install Dokuwiki
+  become: yes
+  tasks:
+    - name: Install packages 
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        name:
+          - apache2
+          - php
+          - php-xml
+
+    - name: Copy apache config from my pc 
+      ansible.builtin.copy:
+        src: 000-default.conf
+        dest: /etc/apache2/sites-available/000-default.conf
+        owner: www-data
+        group: www-data
+        mode: '0777'
+
+    - name: Copy chron script from my pc and puts it in hourly
+      ansible.builtin.copy:
+        src: backup.sh
+        dest: /etc/cron.hourly/backup
+        owner: www-data
+        group: www-data
+        mode: '0777'
+
+    - name: Downloads and unarchives dokuwiki
+      ansible.builtin.unarchive:
+        src: https://download.dokuwiki.org/src/dokuwiki/dokuwiki-stable.tgz
+        dest: /var/www/html
+        owner: www-data
+        group: www-data
+        remote_src: yes
+
+    - name: allows www-data to wr /data
+      ansible.builtin.file:
+        path: /var/www/html/dokuwiki-2022-07-31a/data
+        owner: www-data
+        group: www-data
+        mode: '0764'
+
+    - name: allows www-data to wr /data/tmp
+      ansible.builtin.file:
+        path: /var/www/html/dokuwiki-2022-07-31a/data/tmp
+        owner: www-data
+        group: www-data
+        mode: '0764'
+
+    - name: Reload apache
+      ansible.builtin.command: 
+        cmd: sudo service apache2 reload
+
+    - name: Create a ext4 filesystem on data disk 
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/disk/by-id/google-data
+
+    - name: Mount up data disk
+      ansible.posix.mount:
+        path: /var/www
+        src: /dev/disk/by-id/google-data
+        fstype: ext4
+        state: present
+      
