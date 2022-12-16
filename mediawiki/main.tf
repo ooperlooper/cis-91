@@ -147,9 +147,31 @@ resource "google_compute_firewall" "default-firewall" {
   network = google_compute_network.vpc_network.name
   allow {
     protocol = "tcp"
-    ports = ["22", "80"]
+    ports = ["22"]
   }
   source_ranges = ["0.0.0.0/0"]
+}
+
+resource "google_compute_firewall" "web-firewall" {
+  name = "web-firewall"
+  network = google_compute_network.vpc_network.name
+  allow {
+    protocol = "tcp"
+    ports = ["80"]
+  }
+  source_ranges = ["0.0.0.0/0"]
+  target_tags = ["web"]
+}
+
+resource "google_compute_firewall" "db-firewall" {
+  name = "db-firewall"
+  network = google_compute_network.vpc_network.name
+  allow {
+    protocol = "tcp"
+    ports = ["5432"]
+  }
+  source_tags = ["web"]
+  target_tags = ["db"]
 }
 
 resource "google_compute_target_http_proxy" "default" {
