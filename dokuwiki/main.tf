@@ -15,6 +15,10 @@ variable "zone" {
   default = "us-central1-c"
 }
 
+variable "instance_type" {
+  default = "e2-micro"
+}
+
 terraform {
   required_providers {
     google = {
@@ -37,7 +41,7 @@ resource "google_compute_network" "vpc_network" {
 
 resource "google_compute_instance" "vm_instance" {
   name         = "cis91"
-  machine_type = "e2-micro"
+  machine_type = var.instance_type
   allow_stopping_for_update = true
 
   boot_disk {
