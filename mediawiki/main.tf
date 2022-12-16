@@ -36,8 +36,14 @@ resource "google_compute_network" "vpc_network" {
 }
 
 resource "google_compute_instance" "webservers" {
-  count        = 3
-  name         = "web${count.index}"
+  count = 2
+  name = "web${count.index}"
+  tags = ["web"]
+
+  labels = {
+    name: "web${count.index}"
+  }
+
   machine_type = "e2-micro"
 
   boot_disk {
@@ -51,10 +57,46 @@ resource "google_compute_instance" "webservers" {
     access_config {
     }
   }
+}
 
-  labels = {
-    role: "web"
+resource "google_compute_instance" "db" {
+  name         = "db"
+  machine_type = "e2-micro"
+  tags = ["db"]
+
+  boot_disk {
+    source = google_compute_disk.system.self_link
   }
+
+  attached_disk {
+    source = google_compute_disk.data.self_link
+    device_name = "data"
+  }
+
+  network_interface {
+    network = google_compute_network.vpc_network.name
+    access_config {
+    }
+  }
+}
+
+resource "google_compute_disk" "system" {
+  name  = "system"
+  type  = "pd-ssd"
+  image = "ubuntu-os-cloud/ubuntu-2004-lts"
+  labels = {
+    environment = "dev"
+  }
+  size = "100"
+}
+
+resource "google_compute_disk" "data" {
+  name  = "data"
+  type  = "pd-ssd"
+  labels = {
+    environment = "dev"
+  }
+  size = "100"
 }
 
 resource "google_compute_health_check" "webservers" {
@@ -64,6 +106,7 @@ resource "google_compute_health_check" "webservers" {
   check_interval_sec = 1
 
   http_health_check {
+    request_path = "/health.html"
     port = 80
   }
 }
@@ -104,7 +147,7 @@ resource "google_compute_firewall" "default-firewall" {
   network = google_compute_network.vpc_network.name
   allow {
     protocol = "tcp"
-    ports = ["22", "80", "3000"]
+    ports = ["22", "80"]
   }
   source_ranges = ["0.0.0.0/0"]
 }
@@ -130,6 +173,11 @@ resource "google_compute_global_forwarding_rule" "default" {
 output "external-ip" {
   value = google_compute_instance.webservers[*].network_interface[0].access_config[0].nat_ip
 }
+
+output "db-ip" {
+  value = google_compute_instance.db.network_interface[0].access_config[0].nat_ip
+}
+
 
 output "lb-ip" {
   value = google_compute_global_address.default.address
